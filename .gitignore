@@ -1,0 +1,12 @@
+# Never publish game-derived data or binaries
+doc_core_*.json
+*.html
+*.ic22
+*.zip
+*.raw
+*.card
+*.bin
+*.sram
+*.eeprom
+__pycache__/
+*.pyc
