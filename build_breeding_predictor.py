@@ -102,7 +102,7 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
  <div class="col" id="parents"><h3>Parents &amp; hidden composite (name+44)</h3><div id="parentBody"></div></div>
 </div></div>
 <div class="card">
- <h3>&#127942; Best-mate finder</h3>
+ <h3>&#127942; Best-mate finder <span id="bmVer" class="rng"></span></h3>
  <div class="bar" style="padding:0;background:none">
   <label>For <select class="big" id="bmParent"></select></label>
   <label>maximize <select id="bmTarget"><option value="st">Stamina</option><option value="sp">Speed</option><option value="sh">Sharp</option><option value="ac">AC / dirt</option><option value="extT">External total</option><option value="bal">Balanced (st+sp+sh)</option></select></label>
@@ -117,7 +117,8 @@ const VERS=Object.keys(BREED.versions); let cur=VERS[0];
 const EXT=['start','corner','oob','competing','tenacious','spurt'];
 const CL=M.clamps;
 function pool(){return BREED.versions[cur].pool;}
-function nameOf(h){return h.name||h.romaji||h.nameJP||('#'+h.index);}
+// JP horses: show katakana with romaji in parentheses (romaji alone is hard to follow); EN: the English name.
+function nameOf(h){return h.nameJP ? (h.nameJP+(h.romaji?' ('+h.romaji+')':'')) : (h.name||h.romaji||('#'+h.index));}
 function ev(h){const e=h.externals;return EXT.map(k=>Array.isArray(e)?e[EXT.indexOf(k)]:+e[k]);}
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
 // DOC's ACTUAL decoded RNG (RE _sh4/decode/breeding_routine.md): 32-bit LCG, byte-exact.
@@ -197,7 +198,7 @@ function comp(h){const c=h.composite;return Array.isArray(c)?c:[(c)&255,(c>>8)&2
 function compHtml(h){const c=comp(h);
  return `<span class="comp">name+44 = [${c.join(', ')}] &nbsp; b0=${c[0]} b1=0x${c[1].toString(16).toUpperCase()} b2=${c[2]} b3=0x${c[3].toString(16).toUpperCase()}</span>`;}
 function altHtml(h){const a=h.altNames||{}; const ks=Object.keys(a);
- if(!ks.length)return ''; return `<div class="alt">also: ${ks.map(k=>`${BREED.versions[k].tag}: ${a[k]}`).join(' &middot; ')}</div>`;}
+ if(!ks.length)return ''; return `<div class="alt">same horse in other versions (reference only, not a mate): ${ks.map(k=>`${BREED.versions[k].tag}: ${a[k]}`).join(' &middot; ')}</div>`;}
 
 // ---- load a parent from a US .card (internals/externals/dirt; composite not on card -> neutral) ----
 const cardP={a:null,b:null};
@@ -252,6 +253,7 @@ function predict(){
 }
 
 function bestMate(){
+ // REGION-LOCKED: pool() is the current version only, so candidates are always same-version (same game).
  const P=pool()[+$('#bmParent').value]; if(!P)return; const tgt=$('#bmTarget').value;
  const wantDam = P.kind!=='dam'; // pair a sire with dams and vice versa; mater pool pairs with all others
  const cand=pool().map((h,i)=>[h,i]).filter(([h,i])=>i!==+$('#bmParent').value && (P.kind==='sire'?h.kind!=='sire':P.kind==='dam'?h.kind!=='dam':true));
@@ -264,6 +266,7 @@ function bestMate(){
 
 function fillPickers(){
  const p=pool();
+ const bv=$('#bmVer'); if(bv)bv.textContent='within '+BREED.versions[cur].tag+' only (each version is a separate game)';
  const opt=(h,i)=>`<option value="${i}">${nameOf(h)} (${h.kind||'mater'}, ac${h.ac})</option>`;
  const sires=p.map((h,i)=>[h,i]).filter(([h])=>h.kind!=='dam');
  const dams =p.map((h,i)=>[h,i]).filter(([h])=>h.kind!=='sire');
