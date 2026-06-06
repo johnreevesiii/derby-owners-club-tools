@@ -10,6 +10,8 @@ PROVENANCE (from C:/DerbyOwnersClub/_sh4/RACE_FORMULA_FINDINGS.md, FUN_0c044ab4)
                     distance(9)->multiplier(12) indexer. Those parts here are TUNABLE HEURISTICS, flagged in the UI.
 """
 import json, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _loader_js import LOADER_JS
 try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception: pass
 OUT = r"C:/DerbyOwnersClub/doc-core"
@@ -113,7 +115,7 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
  <span class="sub">spt</span><input id="ye_5" type="number" min="1" max="64" value="20" style="width:44px">
  <span class="sub">| dirt</span><input id="yh_dirt" type="number" min="0" max="255" value="100" style="width:50px">
  <span class="sub">style</span><select id="yh_style"><option value="0">Front-runner</option><option value="1">Start dash</option><option value="2">Last spurt</option><option value="3">Stretch-runner</option><option value="7">Almighty</option></select>
- <label class="pill" style="cursor:pointer;background:#014b50;color:#cfe;border-radius:10px;padding:3px 9px">&#128194; Load .card<input id="yh_card" type="file" accept=".card,.bin" style="display:none"></label>
+ <label class="pill" style="cursor:pointer;background:#014b50;color:#cfe;border-radius:10px;padding:3px 9px">&#128194; Load .card/.raw<input id="yh_card" type="file" accept=".card,.raw,.bin" style="display:none"></label>
  <button id="yhRace" style="background:#b75527;color:#fff;border:0;border-radius:5px;padding:6px 12px;cursor:pointer">&#9654; Race my horse</button>
  <button id="yhTrip" style="background:#014b50;color:#cfe;border:0;border-radius:5px;padding:6px 12px;cursor:pointer">&#127919; Best trip</button>
  <button id="yhOdds" style="background:#014b50;color:#cfe;border:0;border-radius:5px;padding:6px 12px;cursor:pointer">&#128202; My win odds</button>
@@ -121,6 +123,7 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
 </div>
 <div id="simout" class="card" style="display:none"></div>
 <div class="wrap"><table id="t"></table></div>
+<script>__LOADER__</script>
 <script>
 const DATA=__PAYLOAD__, M=__MODEL__, $=s=>document.querySelector(s);
 let cur=Object.keys(DATA.versions)[0], sortKey='score', sortDir=-1;
@@ -291,13 +294,16 @@ function yhBuild(){
 function yhField(seed){const f=simField(seed);f[0]=yhBuild();return f;}
 const C_TRACK=69;function cget(c,t,k){return c[t*C_TRACK+(C_TRACK-k)];}
 $('#yh_card').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
- r.onload=()=>{const c=new Uint8Array(r.result);let us=c.length===207;if(us)for(let i=0;i<8;i++)if(c[0x8A+i]!=='SEGABEF0'.charCodeAt(i))us=false;
-  if(!us){$('#simout').style.display='block';$('#simout').innerHTML='<span style="color:#ff8a8a">Not a US World-Edition .card (need 207 bytes + SEGABEF0).</span>';return;}
+ r.onload=()=>{const raw=new Uint8Array(r.result),c=DOCcard.normalize(raw);
+  if(!c){$('#simout').style.display='block';$('#simout').innerHTML='<span style="color:#ff8a8a">Couldn&rsquo;t read that file &mdash; expected a 207-byte .card or a .raw card export.</span>';return;}
+  const k=DOCcard.kind(c);
+  if(k==='jp'){$('#simout').style.display='block';$('#simout').innerHTML='<span style="color:#f3c969">Japanese (DOC 2000/&rsquo;99) card &mdash; identity &amp; pedigree only; ability bytes live in the cabinet, not on the card, so stats can&rsquo;t be read here. Enter them by hand above, or load a World-Edition card.</span>';return;}
+  if(k!=='us'){$('#simout').style.display='block';$('#simout').innerHTML='<span style="color:#ff8a8a">Unrecognized card (no SEGABEF0 / not a World-Edition card).</span>';return;}
   $('#yh_0').value=Math.min(cget(c,1,69),60);$('#yh_1').value=Math.min(cget(c,1,65),60);$('#yh_2').value=Math.min(cget(c,1,61),60);
   $('#ye_0').value=cget(c,1,43)+1;$('#ye_1').value=cget(c,1,42)+1;$('#ye_2').value=cget(c,1,41)+1;$('#ye_3').value=cget(c,1,40)+1;$('#ye_4').value=cget(c,1,39)+1;$('#ye_5').value=cget(c,1,38)+1;
   $('#yh_dirt').value=cget(c,2,61);
   let nm='';for(let k=69;k>=51;k--){const b=cget(c,0,k)&0x7f;if(b>=32&&b<127)nm+=String.fromCharCode(b);}
-  $('#simout').style.display='block';$('#simout').innerHTML='<b>Loaded card:</b> '+(nm.trim()||'(unnamed)')+' &mdash; stats filled in. Now <b>Race my horse</b> / <b>Best trip</b> / <b>My win odds</b>.';
+  $('#simout').style.display='block';$('#simout').innerHTML='<b>Loaded '+(raw.length===207?'.card':'.raw')+':</b> '+(nm.trim()||'(unnamed)')+' &mdash; stats filled in. Now <b>Race my horse</b> / <b>Best trip</b> / <b>My win odds</b>.';
  };r.readAsArrayBuffer(f);});
 $('#yhRace').onclick=()=>{const d=+$('#dist').value,surf=$('#surf').value,cond=+$('#cond').value;
  const r=simRace(yhField((Date.now()*Math.random())>>>0),d,surf,cond,(Date.now()*Math.random())>>>0);
@@ -322,6 +328,6 @@ render();
 <style>.nerd{display:none}body.shownerd .nerd{display:revert}#nerdtog{position:fixed;right:12px;bottom:12px;z-index:99;background:#0a242e;color:#7fb0bd;border:1px solid #2a5666;border-radius:20px;padding:6px 13px;cursor:pointer;font:12px system-ui}body.shownerd #nerdtog{background:#b75527;color:#fff}</style>
 <script>document.getElementById('nerdtog').onclick=function(){var s=document.body.classList.toggle('shownerd');this.innerHTML=s?'&#129299; Nerd details: ON':'&#129299; Nerd details';};</script>
 </body></html>"""
-out = HTML.replace("__PAYLOAD__", payload).replace("__MODEL__", model)
+out = HTML.replace("__LOADER__", LOADER_JS).replace("__PAYLOAD__", payload).replace("__MODEL__", model)
 open(f"{OUT}/race-lab.html","w",encoding="utf-8").write(out)
 print(f"wrote race-lab.html ({len(out):,} bytes)")

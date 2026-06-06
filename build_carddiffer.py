@@ -10,7 +10,9 @@ JP-kana -> EN stat-twin cross-reference.
 Provenance: us-card.md / jp-card.md decode (doc_card.py, selftest 11/11 byte-exact),
 breeding-system.md pool (doc_core_breeding.json). Offline, data embedded, no deps.
 """
-import json, io, os
+import json, io, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _loader_js import LOADER_JS
 OUT = r"C:/DerbyOwnersClub/doc-core"
 breeding = json.load(io.open(f"{OUT}/doc_core_breeding.json", encoding="utf-8"))
 
@@ -68,15 +70,16 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>DOC Card Diff
 </style></head><body>
 <header><h1>&#127942; DOC Card Differ / Lineage <span class="sub">tool #7 &middot; decode + diff two cards + pedigree against the breeding pool</span></h1></header>
 <div class="wrap">
- <div class="note">Drop two <code>.card</code> files (207 bytes; US World-Edition or JP identity). Everything runs locally in your browser &mdash; nothing is uploaded. Decoder is a JS port of <code>doc_card.py</code> (selftest 11/11 byte-exact); lineage joins sire/dam to the embedded breeding pool (all 4 versions).</div>
+ <div class="note">Drop two horse files &mdash; either the new <code>.card</code> (207 bytes) or the old <code>.raw</code> card-reader export; US World-Edition or JP identity, both decode the same. Everything runs locally in your browser &mdash; nothing is uploaded. Decoder is a JS port of <code>doc_card.py</code> (selftest 11/11 byte-exact); lineage joins sire/dam to the embedded breeding pool (all 4 versions).</div>
  <div class="drops">
-  <label class="drop" id="dropA"><h2>Card A</h2><div id="nameA" class="muted">click or drop a .card</div><input type="file" id="fileA" accept=".card,.raw,.bin"></label>
-  <label class="drop" id="dropB"><h2>Card B (optional &mdash; for diff)</h2><div id="nameB" class="muted">click or drop a .card</div><input type="file" id="fileB" accept=".card,.raw,.bin"></label>
+  <label class="drop" id="dropA"><h2>Card A</h2><div id="nameA" class="muted">click or drop a .card / .raw</div><input type="file" id="fileA" accept=".card,.raw,.bin"></label>
+  <label class="drop" id="dropB"><h2>Card B (optional &mdash; for diff)</h2><div id="nameB" class="muted">click or drop a .card / .raw</div><input type="file" id="fileB" accept=".card,.raw,.bin"></label>
  </div>
  <div id="uidmatch"></div>
  <div id="difftable"></div>
  <div class="grid"><div class="card" id="cardA"></div><div class="card" id="cardB"></div></div>
 </div>
+<script>__LOADER__</script>
 <script>
 const POOL=__POOL__, TWIN=__TWIN__;
 const CARD_LEN=207, TRACK=69;
@@ -193,7 +196,7 @@ function render(){
 }
 function loadFile(file,slot){
  const r=new FileReader();
- r.onload=()=>{const b=new Uint8Array(r.result);const d=decode(b);if(slot==='A'){A=d;document.getElementById('nameA').textContent=file.name;}else{B=d;document.getElementById('nameB').textContent=file.name;}render();};
+ r.onload=()=>{const raw=new Uint8Array(r.result);const b=DOCcard.normalize(raw)||raw;const d=decode(b);const lbl=file.name+(raw.length!==207&&b.length===207?' (.raw)':'');if(slot==='A'){A=d;document.getElementById('nameA').textContent=lbl;}else{B=d;document.getElementById('nameB').textContent=lbl;}render();};
  r.readAsArrayBuffer(file);
 }
 function wire(dropId,fileId,slot){
@@ -206,6 +209,6 @@ function wire(dropId,fileId,slot){
 wire('dropA','fileA','A');wire('dropB','fileB','B');
 </script></body></html>"""
 
-html = HTML.replace("__POOL__", POOL).replace("__TWIN__", TWIN)
+html = HTML.replace("__LOADER__", LOADER_JS).replace("__POOL__", POOL).replace("__TWIN__", TWIN)
 open(f"{OUT}/card-differ.html", "w", encoding="utf-8").write(html)
 print("wrote card-differ.html (%d bytes), pool names=%d, twin keys=%d" % (len(html), len(pool_index), len(twin_index)))

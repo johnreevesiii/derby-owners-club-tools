@@ -15,7 +15,9 @@ isolated in ONE JS function `breedFoal()`. The exact ROM breeding routine + whet
 feeds inheritance is the active SH-4 RE item (see _sh4/decode/breeding_routine.md); when that
 lands, swap `breedFoal()` + the MODEL.provenance banner. Flagged clearly in the UI.
 """
-import json, sys
+import json, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _loader_js import LOADER_JS
 try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception: pass
 OUT = r"C:/DerbyOwnersClub/doc-core"
@@ -71,7 +73,7 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
  h3{margin:0 0 8px;color:#9fe0b0}h4{margin:10px 0 4px;color:#9cc;font-size:12px;text-transform:uppercase}
  .stat{margin:2px 0}.stat b{color:#ffd27a;display:inline-block;min-width:34px}
  .barwrap{display:inline-block;width:150px;height:9px;background:#0a242e;border:1px solid #234;border-radius:5px;vertical-align:middle;overflow:hidden;margin:0 6px}
- .bar{height:100%;background:linear-gradient(90deg,#0e6,#9fe0b0)}
+ .barwrap .bar{height:100%;background:linear-gradient(90deg,#0e6,#9fe0b0)}
  .rng{color:#9ab;font-size:11px}
  .comp{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#9cc}
  .pa{color:#7ad2ff}.pb{color:#f3a0c8}
@@ -89,8 +91,8 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
  <label>Dam/Parent&nbsp;B <select class="big" id="pb"></select></label>
  <label>Rolls <select id="n"><option>200</option><option selected>1000</option><option>5000</option></select></label>
  <button id="run">&#129516; Predict foal</button>
- <label class="pill" style="cursor:pointer">&#128194; A from card<input id="cardA" type="file" accept=".card,.bin" style="display:none"></label>
- <label class="pill" style="cursor:pointer">&#128194; B from card<input id="cardB" type="file" accept=".card,.bin" style="display:none"></label>
+ <label class="pill" style="cursor:pointer">&#128194; A from card<input id="cardA" type="file" accept=".card,.raw,.bin" style="display:none"></label>
+ <label class="pill" style="cursor:pointer">&#128194; B from card<input id="cardB" type="file" accept=".card,.raw,.bin" style="display:none"></label>
  <button id="clrCard" style="display:none">&#10007; clear cards</button>
  <span class="sub" id="cardNote"></span>
 </div>
@@ -108,6 +110,7 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
  </div>
  <div class="wrap"><table id="bmTab"></table></div>
 </div>
+<script>__LOADER__</script>
 <script>
 const BREED=__PAYLOAD__, M=__MODEL__, $=s=>document.querySelector(s);
 const VERS=Object.keys(BREED.versions); let cur=VERS[0];
@@ -209,10 +212,14 @@ function cardParent(c,label){
   composite:[0,0,0,0]};
 }
 function wireCard(inputId,slot){$('#'+inputId).addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
- r.onload=()=>{const p=cardParent(new Uint8Array(r.result),slot==='a'?'YOUR HORSE A':'YOUR HORSE B');
-  if(!p){$('#cardNote').innerHTML='<span style="color:#ff8a8a">not a US World-Edition .card</span>';return;}
+ r.onload=()=>{const raw=new Uint8Array(r.result),c=DOCcard.normalize(raw);
+  if(!c){$('#cardNote').innerHTML='<span style="color:#ff8a8a">couldn&rsquo;t read that file &mdash; expected a 207-byte .card or a .raw card export</span>';return;}
+  const k=DOCcard.kind(c);
+  if(k==='jp'){$('#cardNote').innerHTML='<span style="color:#f3c969">Japanese (DOC 2000/&rsquo;99) card &mdash; identity &amp; pedigree only; ability bytes live in the cabinet, not on the card, so it can&rsquo;t seed a parent here. Use a World-Edition card, or pick a horse from the pool.</span>';return;}
+  const p=cardParent(c,slot==='a'?'YOUR HORSE A':'YOUR HORSE B');
+  if(!p){$('#cardNote').innerHTML='<span style="color:#ff8a8a">unrecognized card (no SEGABEF0 / not a World-Edition card)</span>';return;}
   cardP[slot]=p;$('#clrCard').style.display='';
-  $('#cardNote').innerHTML='<span style="color:#7fdca0">'+(slot==='a'?'A':'B')+' = '+p.name+' (from card)</span> &middot; composite/aptitude approximate for cards';
+  $('#cardNote').innerHTML='<span style="color:#7fdca0">'+(slot==='a'?'A':'B')+' = '+p.name+' (from '+(raw.length===207?'.card':'.raw')+')</span> &middot; composite/aptitude approximate for cards';
   predict();};r.readAsArrayBuffer(f);});}
 wireCard('cardA','a');wireCard('cardB','b');
 $('#clrCard').onclick=()=>{cardP.a=null;cardP.b=null;$('#clrCard').style.display='none';$('#cardNote').textContent='';predict();};
@@ -276,6 +283,6 @@ fillPickers(); predict(); bestMate();
 <style>.nerd{display:none}body.shownerd .nerd{display:revert}#nerdtog{position:fixed;right:12px;bottom:12px;z-index:99;background:#0a242e;color:#7fb0bd;border:1px solid #2a5666;border-radius:20px;padding:6px 13px;cursor:pointer;font:12px system-ui}body.shownerd #nerdtog{background:#b75527;color:#fff}</style>
 <script>document.getElementById('nerdtog').onclick=function(){var s=document.body.classList.toggle('shownerd');this.innerHTML=s?'&#129299; Nerd details: ON':'&#129299; Nerd details';};</script>
 </body></html>"""
-out = HTML.replace("__PAYLOAD__", payload).replace("__MODEL__", model)
+out = HTML.replace("__LOADER__", LOADER_JS).replace("__PAYLOAD__", payload).replace("__MODEL__", model)
 open(f"{OUT}/breeding-lab.html", "w", encoding="utf-8").write(out)
 print(f"wrote {OUT}/breeding-lab.html ({len(out):,} bytes)")

@@ -6,7 +6,9 @@ Built on the DISASSEMBLED post-race interaction reader (0x0C027F80) + table (0x0
 Values + formula are byte-exact (_core/areas/personality-interaction.md). Row character is read from
 the values; exact response names + the card-byte->row classifier are flagged inferred.
 """
-import json
+import json, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _loader_js import LOADER_JS
 OUT = r"C:/DerbyOwnersClub/doc-core"
 # 6x5 interaction multiplier table @file 0x0E7D20 (byte-exact)
 TABLE = [
@@ -63,7 +65,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>DOC Bond & Pe
 <div class="wrap">
  <div class="card">
   <div class="row">
-   <label class="pill" style="cursor:pointer">&#128194; Load your horse's .card<input id="card" type="file" accept=".card,.bin" style="display:none"></label>
+   <label class="pill" style="cursor:pointer">&#128194; Load your horse's .card/.raw<input id="card" type="file" accept=".card,.raw,.bin" style="display:none"></label>
    <span>or pick a personality:</span>
    <select id="pers"></select>
   </div>
@@ -82,6 +84,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>DOC Bond & Pe
   <b>Solid vs inferred:</b> the table <b>values</b>, the <b>6&times;5 shape</b>, and the <b>gain = M&times;(100&minus;bond)</b> formula are decoded byte-exact from the reader at <code>0x0C027F80</code> / table <code>0x0E7D20</code>. The <b>response names</b> (columns) and the <b>card-personality &rarr; profile-row</b> mapping are best-effort <b>inferred</b> (the row is chosen at runtime by a personality tier + a flag we haven't traced). Trust the <i>pattern</i> over the exact label.
  </div>
 </div>
+<script>__LOADER__</script>
 <script>
 const D=__DATA__;const $=s=>document.querySelector(s);
 let curRow=0;
@@ -116,12 +119,15 @@ $('#pers').addEventListener('change',e=>setPersonality(e.target.value));
 const T=69;function cg(c,t,k){return c[t*T+(T-k)];}
 function band(v){for(const[a,b,n]of D.bands)if(v>=a&&v<=b)return n;return '?';}
 $('#card').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
- r.onload=()=>{const c=new Uint8Array(r.result);let us=c.length===207;if(us)for(let i=0;i<8;i++)if(c[0x8A+i]!=='SEGABEF0'.charCodeAt(i))us=false;
-  if(!us){$('#who').innerHTML='<span class="warn">Not a US World-Edition .card.</span>';return;}
+ r.onload=()=>{const raw=new Uint8Array(r.result),c=DOCcard.normalize(raw);
+  if(!c){$('#who').innerHTML='<span class="warn">Couldn&rsquo;t read that file &mdash; expected a 207-byte .card or a .raw card export.</span>';return;}
+  const kk=DOCcard.kind(c);
+  if(kk==='jp'){$('#who').innerHTML='<span class="warn">Japanese (DOC 2000/&rsquo;99) card &mdash; personality lives in the cabinet save, not on the card, so it can&rsquo;t be read here. Pick the personality above to explore its table.</span>';return;}
+  if(kk!=='us'){$('#who').innerHTML='<span class="warn">Unrecognized card (no SEGABEF0 / not a World-Edition card).</span>';return;}
   const b6=cg(c,0,6);const bd=band(b6);const chk=D.band2check[bd]||'Imposing';
   let nm='';for(let k=69;k>=51;k--){const x=cg(c,0,k)&0x7f;if(x>=32&&x<127)nm+=String.fromCharCode(x);}
   $('#pers').value=chk;setPersonality(chk);
-  $('#who').innerHTML=`<span class="ok">${nm.trim()||'(card)'}</span> &mdash; personality byte ${b6} = <b>${bd}</b> &rarr; <b>${chk}</b> profile <span class="muted">(band&rarr;profile inferred; runtime flag may pick the sibling profile)</span>.`;
+  $('#who').innerHTML=`<span class="ok">${nm.trim()||'(card)'}</span> <span class="muted">(from ${raw.length===207?'.card':'.raw'})</span> &mdash; personality byte ${b6} = <b>${bd}</b> &rarr; <b>${chk}</b> profile <span class="muted">(band&rarr;profile inferred; runtime flag may pick the sibling profile)</span>.`;
  };r.readAsArrayBuffer(f);});
 setPersonality(D.checks[0]);
 </script>
@@ -129,6 +135,6 @@ setPersonality(D.checks[0]);
 <style>.nerd{display:none}body.shownerd .nerd{display:revert}#nerdtog{position:fixed;right:12px;bottom:12px;z-index:99;background:#0a242e;color:#7fb0bd;border:1px solid #2a5666;border-radius:20px;padding:6px 13px;cursor:pointer;font:12px system-ui}body.shownerd #nerdtog{background:#b75527;color:#fff}</style>
 <script>document.getElementById('nerdtog').onclick=function(){var s=document.body.classList.toggle('shownerd');this.innerHTML=s?'&#129299; Nerd details: ON':'&#129299; Nerd details';};</script>
 </body></html>"""
-html = HTML.replace("__DATA__", DATA)
+html = HTML.replace("__LOADER__", LOADER_JS).replace("__DATA__", DATA)
 open(f"{OUT}/personality-advisor.html","w",encoding="utf-8").write(html)
 print("wrote personality-advisor.html (%d bytes)" % len(html))
