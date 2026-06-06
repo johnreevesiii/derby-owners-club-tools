@@ -3,7 +3,9 @@
 44-byte food table (doc_core_food.json). Pick the stat you want to raise -> foods ranked by gain;
 or build a feeding plan and see total stat gains. No files, no jargon -> the player door.
 """
-import json, io
+import json, io, os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _loader_js import LOADER_JS
 OUT = r"C:/DerbyOwnersClub/doc-core"
 F = json.load(io.open(f"{OUT}/doc_core_food.json", encoding="utf-8"))
 COLS = F["effectColumns"]  # [Speed,Stamina,Sharp,col3,col4,col5,col6]
@@ -50,6 +52,13 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>DOC Feeding A
   <span style="margin-left:14px">I want to raise:</span>
   <span id="goals"></span>
  </div>
+ <div class="card" id="yhCard">
+  <div class="row" style="margin:0">
+   <label style="cursor:pointer"><span class="pill" style="padding:5px 11px">&#128194; Load your horse (.card / .raw)</span><input id="yhFile" type="file" accept=".card,.raw,.bin" style="display:none"></label>
+   <button id="yhClear" style="display:none">&#10007; clear horse</button>
+   <span id="yh" class="muted">Optional: load a horse to see its current Speed / Stamina / Sharp and a projected total after your feeding plan. Reads both the new <b>.card</b> and the old <b>.raw</b>.</span>
+  </div>
+ </div>
  <div class="card">
   <div class="note">Foods ranked by how much they raise your chosen stat. <b>Feed</b> = normal food (use anytime); <b>Growth</b> = special growth items. The three main stats (Speed / Stamina / Sharp) are confirmed; the extra columns are unconfirmed hidden effects and shown faintly.</div>
   <div id="ranked"></div>
@@ -61,10 +70,11 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>DOC Feeding A
  </div>
 </div>
 <div class="planbar"><span class="tot" id="planTotals">Plan total: &mdash;</span><button id="clearPlan">Clear plan</button></div>
+<script>__LOADER__</script>
 <script>
 const D=__DATA__;const COLS=D.cols;
 const $=s=>document.querySelector(s);
-let curVer='drbyocwc',goal=0,plan=[];
+let curVer='drbyocwc',goal=0,plan=[],yourHorse=null;
 const MAIN=[0,1,2]; // Speed,Stamina,Sharp confirmed
 function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
 {const v=$('#ver');for(const k in D.versions){const o=document.createElement('option');o.value=k;o.textContent=D.versions[k].tag;v.appendChild(o);}v.value=curVer;}
@@ -92,12 +102,41 @@ function renderPlan(){
  $('#plan').innerHTML=Object.entries(counts).map(([n,c])=>'<span class="pill" style="margin:2px">'+esc(n)+(c>1?' ×'+c:'')+'</span>').join(' ');
  const tot=[0,0,0,0,0,0,0];plan.forEach(f=>f.eff.forEach((v,i)=>tot[i]+=v));
  $('#planTotals').innerHTML='Plan total: '+MAIN.map(i=>'<b>'+COLS[i]+' +'+tot[i]+'</b>').join(' &nbsp; ')+(tot.slice(3).some(x=>x)?' <span class="muted">(+ other '+tot.slice(3).filter(x=>x).join('/')+')</span>':'');
+ if(yourHorse)renderYH();
 }
+// ---- your horse (load from .card or .raw; show current internals + projected after plan) ----
+const _T=69;function _cg(c,t,k){return c[t*_T+(_T-k)];}
+const INT_CAP=60; // on-card internal display cap (matches the Stable Management System)
+function renderYH(){
+ if(!yourHorse){return;}
+ const h=yourHorse;
+ const tot=[0,0,0,0,0,0,0];plan.forEach(f=>f.eff.forEach((v,i)=>tot[i]+=v));
+ const cur={Spd:h.spd,Sta:h.sta,Shp:h.shp};
+ // food columns: 0=Speed,1=Stamina,2=Sharp -> map onto the horse's internals
+ const add={Spd:tot[0],Sta:tot[1],Shp:tot[2]};
+ const cell=(lab,c,a)=>{const proj=Math.min(c+a,INT_CAP);const cap=(c+a)>INT_CAP;
+  return '<b>'+lab+'</b> '+c+(a?(' <span class="gain">+'+a+'</span> &rarr; <b>'+proj+'</b>'+(cap?' <span class="muted">(cap '+INT_CAP+')</span>':'')):'');};
+ $('#yh').innerHTML='<b style="color:#e8eef0">'+esc(h.name||'(unnamed)')+'</b> <span class="muted">('+h.src+')</span> &nbsp; '
+  +cell('Spd',cur.Spd,add.Spd)+' &nbsp; '+cell('Sta',cur.Sta,add.Sta)+' &nbsp; '+cell('Shp',cur.Shp,add.Shp)
+  +' &nbsp; <span class="muted">dirt '+h.dirt+'</span>'
+  +(plan.length?'':' <span class="muted">&middot; add foods to see the projected total</span>');
+}
+$('#yhFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{const raw=new Uint8Array(r.result),c=DOCcard.normalize(raw);
+  if(!c){$('#yh').innerHTML='<span style="color:#f3a">Couldn&rsquo;t read that file &mdash; expected a 207-byte .card or a .raw card export.</span>';return;}
+  const k=DOCcard.kind(c);
+  if(k==='jp'){$('#yh').innerHTML='<span class="muted">Japanese (DOC 2000/&rsquo;99) card &mdash; identity &amp; pedigree only; stats live in the cabinet, not on the card, so there&rsquo;s nothing to project here. The food rankings above still apply.</span>';yourHorse=null;$('#yhClear').style.display='none';return;}
+  if(k!=='us'){$('#yh').innerHTML='<span style="color:#f3a">Unrecognized card (no SEGABEF0 / not a World-Edition card).</span>';return;}
+  let nm='';for(let kk=69;kk>=51;kk--){const b=_cg(c,0,kk)&0x7f;if(b>=32&&b<127)nm+=String.fromCharCode(b);}
+  yourHorse={name:nm.trim(),spd:Math.min(_cg(c,1,65),INT_CAP),sta:Math.min(_cg(c,1,69),INT_CAP),shp:Math.min(_cg(c,1,61),INT_CAP),dirt:_cg(c,2,61),src:raw.length===207?'.card':'.raw'};
+  $('#yhClear').style.display='';renderYH();
+ };r.readAsArrayBuffer(f);});
+$('#yhClear').addEventListener('click',()=>{yourHorse=null;$('#yhClear').style.display='none';$('#yh').innerHTML='Optional: load a horse to see its current Speed / Stamina / Sharp and a projected total after your feeding plan. Reads both the new <b>.card</b> and the old <b>.raw</b>.';$('#yh').className='muted';});
 $('#ver').addEventListener('change',e=>{curVer=e.target.value;plan=[];renderRanked();renderPlan();});
 $('#clearPlan').addEventListener('click',()=>{plan=[];renderPlan();});
 goalBtns();renderRanked();renderPlan();
 </script></body></html>"""
-html = HTML.replace("__DATA__", DATA)
+html = HTML.replace("__LOADER__", LOADER_JS).replace("__DATA__", DATA)
 open(f"{OUT}/feeding-advisor.html", "w", encoding="utf-8").write(html)
 nf = sum(len(v["foods"]) for v in versions.values())
 print("wrote feeding-advisor.html (%d bytes), foods=%d across %d versions" % (len(html), nf, len(versions)))
