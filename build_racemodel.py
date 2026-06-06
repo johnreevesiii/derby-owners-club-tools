@@ -72,13 +72,16 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
  header{background:#014b50;padding:12px 18px;border-bottom:3px solid #b75527}header h1{margin:0;font-size:18px}.sub{color:#bcd;font-size:12px}
  .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 18px;background:#0a242e;position:sticky;top:0;z-index:5}
  select,input{background:#0a242e;color:#eae8e2;border:1px solid #2a5560;border-radius:5px;padding:5px 8px;font-size:13px}
+ input.statbox{width:56px;padding:5px 4px;text-align:center;-moz-appearance:textfield;appearance:textfield}
+ input#yh_dirt.statbox{width:64px}
+ input.statbox::-webkit-inner-spin-button,input.statbox::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
  .tab{padding:6px 12px;border-radius:6px 6px 0 0;background:#123;cursor:pointer;border:1px solid transparent;border-bottom:0}.tab.active{background:#014b50;border-color:#b75527}
  .card{background:#0a2028;border:1px solid #143;border-radius:8px;margin:10px 12px;padding:10px 14px;font-size:12px;color:#9ab}
  .card b{color:#ffd27a}.ok{color:#9fe0b0}.warn{color:#f3c969}
  .wrap{max-height:62vh;overflow:auto;margin:0 12px;border:1px solid #143;border-radius:6px}
  table{border-collapse:collapse;width:100%}th,td{padding:4px 8px;border-bottom:1px solid #143;white-space:nowrap;text-align:right}th.l,td.l{text-align:left}
  th{position:sticky;top:0;background:#0a242e;color:#9cc;cursor:pointer;font-size:11px;text-transform:uppercase}
- td.name{text-align:left;font-weight:600}tr:hover td{background:#10323e}.score{color:#9fe0b0;font-weight:700}.rank{color:#d8a630;font-weight:700}
+ td.name{text-align:left;font-weight:600}tbody tr:nth-child(even) td{background:#0c2a34}tbody tr:hover td{background:#163e4b}.score{color:#9fe0b0;font-weight:700}.rank{color:#d8a630;font-weight:700}
  .romaji{color:#9cc;font-style:italic;font-size:11px}.bt{color:#7ad2ff}
  label{font-size:12px;color:#9ab}
 </style></head><body>
@@ -104,16 +107,16 @@ HTML = r"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name
 </div>
 <div class="bar" id="yhbar" style="padding-top:0;border-top:1px solid #143b48;flex-wrap:wrap;gap:6px">
  <b style="color:#eae8e2">&#128012; Your horse:</b>
- <span class="sub">STA</span><input id="yh_0" type="number" min="0" max="60" value="30" style="width:44px">
- <span class="sub">SPD</span><input id="yh_1" type="number" min="0" max="60" value="30" style="width:44px">
- <span class="sub">SHP</span><input id="yh_2" type="number" min="0" max="60" value="30" style="width:44px">
- <span class="sub">| ext start</span><input id="ye_0" type="number" min="1" max="64" value="20" style="width:44px">
- <span class="sub">cor</span><input id="ye_1" type="number" min="1" max="64" value="20" style="width:44px">
- <span class="sub">oob</span><input id="ye_2" type="number" min="1" max="64" value="20" style="width:44px">
- <span class="sub">cmp</span><input id="ye_3" type="number" min="1" max="64" value="20" style="width:44px">
- <span class="sub">ten</span><input id="ye_4" type="number" min="1" max="64" value="20" style="width:44px">
- <span class="sub">spt</span><input id="ye_5" type="number" min="1" max="64" value="20" style="width:44px">
- <span class="sub">| dirt</span><input id="yh_dirt" type="number" min="0" max="255" value="100" style="width:50px">
+ <span class="sub">STA</span><input id="yh_0" type="number" min="0" max="60" value="30" class="statbox">
+ <span class="sub">SPD</span><input id="yh_1" type="number" min="0" max="60" value="30" class="statbox">
+ <span class="sub">SHP</span><input id="yh_2" type="number" min="0" max="60" value="30" class="statbox">
+ <span class="sub">| ext start</span><input id="ye_0" type="number" min="1" max="64" value="20" class="statbox">
+ <span class="sub">cor</span><input id="ye_1" type="number" min="1" max="64" value="20" class="statbox">
+ <span class="sub">oob</span><input id="ye_2" type="number" min="1" max="64" value="20" class="statbox">
+ <span class="sub">cmp</span><input id="ye_3" type="number" min="1" max="64" value="20" class="statbox">
+ <span class="sub">ten</span><input id="ye_4" type="number" min="1" max="64" value="20" class="statbox">
+ <span class="sub">spt</span><input id="ye_5" type="number" min="1" max="64" value="20" class="statbox">
+ <span class="sub">| dirt</span><input id="yh_dirt" type="number" min="0" max="255" value="100" class="statbox">
  <span class="sub">style</span><select id="yh_style"><option value="0">Front-runner</option><option value="1">Start dash</option><option value="2">Last spurt</option><option value="3">Stretch-runner</option><option value="7">Almighty</option></select>
  <label class="pill" style="cursor:pointer;background:#014b50;color:#cfe;border-radius:10px;padding:3px 9px">&#128194; Load .card/.raw<input id="yh_card" type="file" accept=".card,.raw,.bin" style="display:none"></label>
  <button id="yhRace" style="background:#b75527;color:#fff;border:0;border-radius:5px;padding:6px 12px;cursor:pointer">&#9654; Race my horse</button>
