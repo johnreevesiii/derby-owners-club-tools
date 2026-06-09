@@ -1,0 +1,47 @@
+{
+  "$schema": "./rom-spec.schema.json",
+  "specVersion": "1.0.0",
+  "id": "doc-2000",
+  "identity": {
+    "tag": "DOC 2000",
+    "label": "Derby Owners Club 2000",
+    "region": "Japan",
+    "mameSetname": "derbyo2k",
+    "programRom": "epr-22284a.ic22",
+    "romSize": 4194304,
+    "sha256": "8b72eb39cd944896901af86e37fae0337f3b4f8e4e4f726c8f4137be0af1b4f1",
+    "signature": { "offset": "0x8000", "bytes": "162f047ffcf5fcf60b4afcf48690b6f3" },
+    "naomiHeader": { "offset": "0x130", "buildDate": "1999-10-01", "gameCode": "BBX0" },
+    "derivedFrom": null
+  },
+  "encoding": { "names": "euc-jp", "strings": "euc-jp", "lineSeparator": "0x0a" },
+  "recordFormats": {
+    "roster": { "width": 32, "count": { "value": 244, "verified": true } },
+    "nameTable": { "stride": 18 },
+    "breeding": { "width": 60, "count": { "value": 167, "verified": true, "note": "JP merged mater pool (sire+dam combined), 167 records." } },
+    "food": { "width": 44, "count": { "value": 45, "verified": true } }
+  },
+  "tables": {
+    "roster":      { "offset": { "value": "0x10ad1b", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json; areas/horse-stats.md", "note": "32-byte records; ~a dozen CPU records differ from Rev C (genuine rebalance)." },
+    "names":       { "offset": { "value": "0x10cc68", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json", "note": "Full JP roster renamed; EUC-JP." },
+    "sire":        { "offset": { "value": "0x11106c", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "build_breeding.py; areas/breeding-system.md", "note": "JP MERGED mater table (sire+dam combined), 60-byte stride, 167 records. No separate dam table in JP builds." },
+    "dam":         { "offset": { "value": null, "frame": "file" }, "access": "literal-pool", "verified": false, "source": "build_breeding.py", "note": "N/A: JP builds use one merged mater table (see sire); there is no separate dam table." },
+    "g1":          { "offset": { "value": "0xca62d", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "21 G1 races." },
+    "tracks":      { "offset": { "value": "0xca335", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "36 courses." },
+    "foods":       { "offset": { "value": "0x171f34", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_food.json", "note": "44-byte records, 45 foods; terminator 0x1726F0." },
+    "strings":     { "offset": { "value": "0xca2c0", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_strings.json", "note": "First of 6 blocks (Coat / Sex Labels); EUC-JP, NUL/0x0A; full block map in doc_core_strings.json." },
+    "racePace":    { "offset": { "value": null, "frame": "file" }, "access": "literal-pool", "verified": false, "source": "areas/race-formula.md", "note": "Not located in this version. Candidate for live-ROM RE." },
+    "personality": { "offset": { "value": null, "frame": "file" }, "access": "computed", "verified": false, "source": "areas/personality-interaction.md", "note": "Not located in this version. Candidate for live-ROM RE." }
+  },
+  "courses": {
+    "total": { "value": 36, "verified": true },
+    "g1": { "value": 21, "verified": true }
+  },
+  "cards": { "type": "identity-only", "marker": null, "payloadBytes": null, "note": "JP card: identity/pedigree only, stats held cabinet-side. Format differs from World Edition; see _jp_re/JP_CARD_FORMAT_SPEC.md. JP card creation needs the cabinet lead-id/trailer recipe (open)." },
+  "divergence": {
+    "rosterIdenticalTo": null,
+    "renamedRoster": true,
+    "foodMeta": { "beer": true, "banana": true },
+    "note": "vs Rev C: roughly a dozen CPU racing records differ (real stat rebalance) and the whole JP roster is renamed. 21 G1 races vs 19 in the World Edition. Breeding uses a single merged mater table (see tables.sire), not split sire/dam. Cross-version patching against Rev C is unsafe for the diverged records."
+  }
+}

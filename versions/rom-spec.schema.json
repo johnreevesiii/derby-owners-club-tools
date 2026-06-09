@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/johnreevesiii/doc-core-oss/versions/rom-spec.schema.json",
+  "title": "Derby Owners Club ROM Version Spec",
+  "description": "Machine-readable, byte-verified architecture spec for one DOC mask-ROM version. Cross-version constants live in _shared.json. Every offset declares its coordinate frame; every fact declares whether it is byte-verified and its source.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["specVersion", "id", "identity", "encoding", "recordFormats", "tables", "cards", "divergence"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "specVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "Schema contract version this file targets." },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "Stable slug, e.g. rev-c, doc-2000." },
+    "identity": { "$ref": "#/$defs/identity" },
+    "encoding": { "$ref": "#/$defs/encoding" },
+    "recordFormats": { "$ref": "#/$defs/recordFormats" },
+    "tables": { "$ref": "#/$defs/tables" },
+    "courses": { "$ref": "#/$defs/courses" },
+    "cards": { "$ref": "#/$defs/cards" },
+    "divergence": { "$ref": "#/$defs/divergence" }
+  },
+  "$defs": {
+    "hexOrNull": {
+      "oneOf": [
+        { "type": "string", "pattern": "^0x[0-9a-fA-F]+$" },
+        { "type": "null" }
+      ],
+      "description": "A hex literal like 0x108e03, or null when not yet located."
+    },
+    "frame": {
+      "type": "string",
+      "enum": ["file", "runtime", "ghidra"],
+      "description": "Coordinate frame for an offset. file=raw ROM byte; runtime=file+0x0C020000; ghidra=file+0x0C000000. See _shared.json addressRule."
+    },
+    "offsetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "frame"],
+      "properties": {
+        "value": { "$ref": "#/$defs/hexOrNull" },
+        "frame": { "$ref": "#/$defs/frame" }
+      }
+    },
+    "tableEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "verified", "source"],
+      "properties": {
+        "offset": { "$ref": "#/$defs/offsetRef" },
+        "access": { "type": "string", "enum": ["literal-pool", "computed", "unknown"], "description": "How the ROM reaches this table. computed tables have no standalone pointer." },
+        "verified": { "type": "boolean", "description": "true only when byte-verified against this version's ROM." },
+        "source": { "type": "string", "description": "Provenance pointer, e.g. doc_core_versions.json or areas/race-formula.md." },
+        "note": { "type": "string" }
+      }
+    },
+    "countField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "verified"],
+      "properties": {
+        "value": { "type": ["integer", "null"] },
+        "verified": { "type": "boolean" },
+        "note": { "type": "string" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tag", "label", "region", "mameSetname", "programRom", "romSize", "sha256", "signature", "naomiHeader", "derivedFrom"],
+      "properties": {
+        "tag": { "type": "string" },
+        "label": { "type": "string" },
+        "region": { "type": "string", "enum": ["World", "Japan"] },
+        "mameSetname": { "type": "string" },
+        "programRom": { "type": "string" },
+        "romSize": { "type": "integer", "const": 4194304 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["offset", "bytes"],
+          "properties": {
+            "offset": { "type": "string", "const": "0x8000" },
+            "bytes": { "type": "string", "pattern": "^[0-9a-f]{32}$", "description": "16-byte edit-proof build signature." }
+          }
+        },
+        "naomiHeader": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["offset", "buildDate", "gameCode"],
+          "properties": {
+            "offset": { "type": "string", "const": "0x130" },
+            "buildDate": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "gameCode": { "type": "string" }
+          }
+        },
+        "derivedFrom": { "type": ["string", "null"], "description": "Slug of the parent version if this is a hack/derivative, else null." }
+      }
+    },
+    "encoding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["names", "strings"],
+      "properties": {
+        "names": { "type": "string", "enum": ["ascii", "euc-jp"] },
+        "strings": { "type": "string", "enum": ["ascii", "euc-jp"] },
+        "lineSeparator": { "$ref": "#/$defs/hexOrNull" }
+      }
+    },
+    "recordFormats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roster", "nameTable", "breeding", "food"],
+      "properties": {
+        "roster": {
+          "type": "object", "additionalProperties": false,
+          "required": ["width", "count"],
+          "properties": {
+            "width": { "type": "integer", "enum": [28, 32] },
+            "count": { "$ref": "#/$defs/countField" }
+          }
+        },
+        "nameTable": {
+          "type": "object", "additionalProperties": false,
+          "required": ["stride"],
+          "properties": { "stride": { "type": "integer" } }
+        },
+        "breeding": {
+          "type": "object", "additionalProperties": false,
+          "required": ["width", "count"],
+          "properties": {
+            "width": { "type": ["integer", "null"] },
+            "count": { "$ref": "#/$defs/countField" }
+          }
+        },
+        "food": {
+          "type": "object", "additionalProperties": false,
+          "required": ["width", "count"],
+          "properties": {
+            "width": { "type": ["integer", "null"] },
+            "count": { "$ref": "#/$defs/countField" }
+          }
+        }
+      }
+    },
+    "tables": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roster", "names", "sire", "dam", "g1", "tracks", "foods", "strings", "racePace", "personality"],
+      "properties": {
+        "roster": { "$ref": "#/$defs/tableEntry" },
+        "names": { "$ref": "#/$defs/tableEntry" },
+        "sire": { "$ref": "#/$defs/tableEntry" },
+        "dam": { "$ref": "#/$defs/tableEntry" },
+        "g1": { "$ref": "#/$defs/tableEntry" },
+        "tracks": { "$ref": "#/$defs/tableEntry" },
+        "foods": { "$ref": "#/$defs/tableEntry" },
+        "strings": { "$ref": "#/$defs/tableEntry" },
+        "racePace": { "$ref": "#/$defs/tableEntry" },
+        "personality": { "$ref": "#/$defs/tableEntry" }
+      }
+    },
+    "courses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "g1"],
+      "properties": {
+        "total": { "$ref": "#/$defs/countField" },
+        "g1": { "$ref": "#/$defs/countField" }
+      }
+    },
+    "cards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "marker", "payloadBytes"],
+      "properties": {
+        "type": { "type": "string", "enum": ["full-stat", "identity-only"] },
+        "marker": { "type": ["string", "null"] },
+        "payloadBytes": { "type": ["integer", "null"] },
+        "note": { "type": "string" }
+      }
+    },
+    "divergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rosterIdenticalTo", "renamedRoster", "foodMeta"],
+      "properties": {
+        "rosterIdenticalTo": { "type": ["string", "null"], "description": "Slug whose CPU stat records are byte-identical to this version's, else null." },
+        "renamedRoster": { "type": "boolean", "description": "true if this version's roster names diverge from the World Edition baseline." },
+        "foodMeta": {
+          "type": "object", "additionalProperties": false,
+          "required": ["beer", "banana"],
+          "properties": {
+            "beer": { "type": ["boolean", "null"] },
+            "banana": { "type": ["boolean", "null"] }
+          }
+        },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

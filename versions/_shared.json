@@ -1,0 +1,45 @@
+{
+  "_about": "Cross-version constants for Derby Owners Club ROM specs. Facts here are true for all four mask-ROM versions unless a per-version spec overrides. Companion to ROM_ARCHITECTURE.md.",
+  "specVersion": "1.0.0",
+  "platform": {
+    "system": "Sega NAOMI",
+    "cpu": "SH-4 (SuperH-4)",
+    "endianness": "little",
+    "cabinet": "multiboard (server/master board + satellites; master runs the race sim)",
+    "programRomSize": 4194304
+  },
+  "addressRule": {
+    "description": "A byte at file offset X is pointed-to / executes at runtime address X + 0x0C020000. Ghidra static analysis loads at base 0x0C000000.",
+    "runtimeBase": "0x0C020000",
+    "ghidraBase": "0x0C000000",
+    "fileToRuntime": "runtime = file + 0x0C020000",
+    "fileToGhidra": "ghidra = file + 0x0C000000",
+    "runtimeToFile": "file = runtime - 0x0C020000",
+    "warning": "Baked data/code pointers in the ROM are RUNTIME values. Mixing the three frames (file, ghidra, runtime) is the top source of pointer-not-found confusion."
+  },
+  "pointerConventions": {
+    "literalPool": "A baked runtime pointer in a function constant pool. Findable by scanning the ROM for the 4-byte LE runtime address. Located roster, breeding, food, strings, and the personality-interaction reader.",
+    "computed": "PC-relative or base+index access (mova @(disp,PC)); no standalone pointer exists. Scans return nothing even though the table is real. The race FPU tables and the personality table are reached this way; disassemble the reader to recover index math."
+  },
+  "card": {
+    "payloadBytes": 207,
+    "layout": "3 tracks x 69 bytes, stored reversed per track",
+    "wholeCardChecksum": false,
+    "note": "No whole-card checksum in the payload, so cards are freely editable and silently mis-editable. Field map in CARD_BYTE_MAP.md. US/World cards are full-stat (SEGABEF0 marker); JP cards are identity/pedigree only with stats held cabinet-side (see _jp_re/JP_CARD_FORMAT_SPEC.md)."
+  },
+  "nvram": {
+    "type": "BBSRAM",
+    "structure": "two redundant 0x13c4-strided regions + LE16 checksums",
+    "stores": "leaderboards, track records, bookkeeping",
+    "doesNotStore": "money, horses, career progress"
+  },
+  "emulationNotes": {
+    "rig": "GDB-stub Flycast with Dynarec ON; software breakpoints do not fire (JIT). Memory reads/writes work. Use interpreter mode for code breakpoints.",
+    "liveRamBase": "Cart live RAM base means structs move per boot; locate by scanning, not hard-coded address."
+  },
+  "tableSeparation": {
+    "claim": "CPU roster and breeding pool are SEPARATE tables, not one reused table.",
+    "evidence": "Roster (32-byte recs) and breeding sire/dam arrays (60-byte recs) are distinct regions with different record formats. They overlap only by NAME, both drawing from the same famous-Thoroughbred namespace. A shared name carries different stats in each table (e.g. Rev C Sunday Silence: racer dirt 255 vs breeding sire dirt 216).",
+    "consequence": "Reconcile breeding records by NAME, not index. Cross-version patching of diverged records is unsafe."
+  }
+}

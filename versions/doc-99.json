@@ -1,0 +1,47 @@
+{
+  "$schema": "./rom-spec.schema.json",
+  "specVersion": "1.0.0",
+  "id": "doc-99",
+  "identity": {
+    "tag": "DOC '99",
+    "label": "Derby Owners Club (Original)",
+    "region": "Japan",
+    "mameSetname": "derbyoc",
+    "programRom": "epr-22099b.ic22",
+    "romSize": 4194304,
+    "sha256": "f096b811a30fa2a9b947dd08133a44ddc6a3318d2b3ad95457ab5104dc524863",
+    "signature": { "offset": "0x8000", "bytes": "188bee02f15328385a482c732df33cfd" },
+    "naomiHeader": { "offset": "0x130", "buildDate": "1999-10-01", "gameCode": "BAX0" },
+    "derivedFrom": null
+  },
+  "encoding": { "names": "euc-jp", "strings": "euc-jp", "lineSeparator": "0x0a" },
+  "recordFormats": {
+    "roster": { "width": 28, "count": { "value": 244, "verified": true } },
+    "nameTable": { "stride": 18 },
+    "breeding": { "width": 56, "count": { "value": 167, "verified": true, "note": "JP merged mater pool (sire+dam combined), 167 records." } },
+    "food": { "width": 44, "count": { "value": 41, "verified": true } }
+  },
+  "tables": {
+    "roster":      { "offset": { "value": "0xf6902", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json; areas/horse-stats.md", "note": "28-byte records; a different roster from the World Edition." },
+    "names":       { "offset": { "value": "0xf8480", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json", "note": "EUC-JP." },
+    "sire":        { "offset": { "value": "0xf9680", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "build_breeding.py; areas/breeding-system.md", "note": "JP MERGED mater table (sire+dam combined), 56-byte stride, 167 records. Supersedes the registry value 0xf96cc, which did not decode cleanly. No separate dam table." },
+    "dam":         { "offset": { "value": null, "frame": "file" }, "access": "literal-pool", "verified": false, "source": "build_breeding.py", "note": "N/A: JP builds use one merged mater table (see sire); there is no separate dam table." },
+    "g1":          { "offset": { "value": "0xbdad5", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "19 G1 races." },
+    "tracks":      { "offset": { "value": "0xbd875", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "29 courses." },
+    "foods":       { "offset": { "value": "0x15c9ec", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_food.json", "note": "44-byte records, 41 foods; terminator 0x15D0F8." },
+    "strings":     { "offset": { "value": "0xdc000", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_strings.json", "note": "First of 7 blocks (Feeding / Difficulty Labels); EUC-JP, NUL/0x0A; full block map in doc_core_strings.json." },
+    "racePace":    { "offset": { "value": null, "frame": "file" }, "access": "literal-pool", "verified": false, "source": "areas/race-formula.md", "note": "Not located in this version. Candidate for live-ROM RE." },
+    "personality": { "offset": { "value": null, "frame": "file" }, "access": "computed", "verified": false, "source": "areas/personality-interaction.md", "note": "Not located in this version. Candidate for live-ROM RE." }
+  },
+  "courses": {
+    "total": { "value": 29, "verified": true },
+    "g1": { "value": 19, "verified": true }
+  },
+  "cards": { "type": "identity-only", "marker": null, "payloadBytes": null, "note": "JP card: identity/pedigree only, stats held cabinet-side. See _jp_re/JP_CARD_FORMAT_SPEC.md." },
+  "divergence": {
+    "rosterIdenticalTo": null,
+    "renamedRoster": true,
+    "foodMeta": { "beer": false, "banana": false },
+    "note": "Earliest version. Different roster entirely, 28-byte records, 56-byte merged breeding mater table (see tables.sire), 29 courses / 19 G1 / 41 foods. No beer or banana in the food meta. Cross-version patching against the World Edition is unsafe across the board."
+  }
+}

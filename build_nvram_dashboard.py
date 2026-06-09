@@ -109,10 +109,13 @@ function decodeMoney(base,copy2){
    const j=NAMEDB[r.name]; r.id=j?j.id:''; r.grade=j?j.grade:''; r.coat=j?j.coat:''; r.style=j?j.style:'';
    out.push(r);} return out;
 }
+function fmtTime(cs){return `${Math.floor(cs/6000)}.${String(Math.floor((cs%6000)/100)).padStart(2,'0')}.${String(cs%100).padStart(2,'0')}`;}
 function decodeTrack(base){
+ // time @+0x14 is a LE16 in 1/40-second units: cs = raw*5//2 (x2.5). NOT an LE32 centisecond read
+ // (that swallows the separate +0x16 field and runs 2.5x fast). See TRACK_RECORD_TIME_PRECISION.md.
  const out=[];
- for(let i=0;i<TR_N;i++){const o=base+i*TR_REC; const cs=u32(o+0x14);
-   out.push({race:i,holder:ascii(o,20),timeCs:cs,timeSec:(cs/100).toFixed(2),tail:u32(o+0x18)});}
+ for(let i=0;i<TR_N;i++){const o=base+i*TR_REC; const raw=u16(o+0x14); const cs=Math.floor(raw*5/2);
+   out.push({race:i,holder:ascii(o,20),time:fmtTime(cs),raw,timeCs:cs,timeSec:(cs/100).toFixed(2),field16:u16(o+0x16),tail:u32(o+0x18)});}
  return out;
 }
 function regBase(){return region==='r1'?R1:R2;}
@@ -171,11 +174,11 @@ function renderTrack(){
  const q=$('#q').value.toLowerCase().trim();
  let rows=window._track.slice();
  if(q)rows=rows.filter(r=>(r.holder+' '+r.race).toLowerCase().includes(q));
- const get=r=>({race:r.race,holder:r.holder,timeCs:r.timeCs}[sortKey]??r.timeCs);
- if(['race','holder','timeCs','timeSec'].includes(sortKey)) rows.sort((a,b)=>{const x=get(a),y=get(b);return(x<y?-1:x>y?1:0)*sortDir;});
- const cols=[['race','Race #'],['holder','Record Holder'],['timeSec','Time (s)'],['timeCs','cs'],['tail','tail']];
+ const get=r=>({race:r.race,holder:r.holder,time:r.timeCs,timeCs:r.timeCs,timeSec:r.timeCs,raw:r.raw}[sortKey]??r.timeCs);
+ if(['race','holder','time','timeCs','timeSec','raw'].includes(sortKey)) rows.sort((a,b)=>{const x=get(a),y=get(b);return(x<y?-1:x>y?1:0)*sortDir;});
+ const cols=[['race','Race #'],['holder','Record Holder'],['time','Time (M.SS.hh)'],['timeSec','sec'],['timeCs','cs'],['raw','raw (1/40s)'],['tail','tail']];
  let h='<div class="wrap"><table><thead><tr>'+cols.map(([k,l])=>`<th class="${k==='holder'?'l':''}" data-k="${k}">${l}</th>`).join('')+'</tr></thead><tbody>';
- for(const r of rows) h+=`<tr><td class="rank">${r.race}</td><td class="name">${r.holder||'<i>—</i>'}</td><td class="money">${r.timeSec}</td><td>${r.timeCs}</td><td>${r.tail}</td></tr>`;
+ for(const r of rows) h+=`<tr><td class="rank">${r.race}</td><td class="name">${r.holder||'<i>—</i>'}</td><td class="money">${r.time}</td><td>${r.timeSec}</td><td>${r.timeCs}</td><td>${r.raw}</td><td>${r.tail}</td></tr>`;
  $('#view').innerHTML=h+'</tbody></table></div>';
  $('#count').textContent=`${rows.length} courses`;
  bindSort();
@@ -227,7 +230,7 @@ function exp(fmt){
  let rows, name;
  if(tab==='money'){const meta={};window._money2.forEach(m=>meta[m.rank]=m);
    rows=window._money.map(r=>({rank:r.rank,name:r.name,money:r.money,grade:r.grade,style:r.style,coat:r.coat,romId:r.id,flag0:r.flag0,flag1:r.flag1,c2sub:meta[r.rank]?.sub,c2meta:meta[r.rank]?.meta})); name='doc-nvram-money-'+region;}
- else if(tab==='track'){rows=window._track.map(r=>({race:r.race,holder:r.holder,timeSec:r.timeSec,timeCs:r.timeCs,tail:r.tail})); name='doc-nvram-track-'+region;}
+ else if(tab==='track'){rows=window._track.map(r=>({race:r.race,holder:r.holder,time:r.time,timeSec:r.timeSec,timeCs:r.timeCs,raw:r.raw,tail:r.tail})); name='doc-nvram-track-'+region;}
  else {rows=[window._book]; name='doc-nvram-bookkeeping';}
  let blob;
  if(fmt==='json'){blob=new Blob([JSON.stringify(rows,null,1)],{type:'application/json'}); name+='.json';}

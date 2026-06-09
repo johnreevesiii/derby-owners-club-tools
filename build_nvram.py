@@ -18,6 +18,9 @@ Corrections applied over _core/areas/nvram.md (per nvram_VERIFICATION.md, byte-c
   * region stride/delta is +0x13c4 (5060), the same value stored as LE32 at 0x1fc.
   * copy-2 metadata bytes "80 16 00" decode little-endian to 0x1680 (5760), not 0x168000.
   * the 0x100 bookkeeping block is a SECOND distinct header, NOT a verbatim mirror of 0x00.
+  * track-record TIME at +0x14 is LE16 in 1/40-second units (cs = raw*5//2), NOT an LE32 centisecond
+    value; the old LE32 read swallowed the separate +0x16 field and ran 2.5x fast. See
+    TRACK_RECORD_TIME_PRECISION.md.
 """
 import json, os, struct, sys
 try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -75,13 +78,25 @@ def decode_money_record(b, o, copy2=False):
     return rec
 
 
+def fmt_time(cs):
+    """centiseconds -> M.SS.hh (matches the in-game RESULT screen)."""
+    return f"{cs // 6000}.{(cs % 6000) // 100:02d}.{cs % 100:02d}"
+
+
 def decode_track_record(b, o):
-    cs = u32(b, o + 0x14)
+    # Time @+0x14 is a LE16 in 1/40-second units; cs = raw*5//2 (x2.5). It is NOT an LE32 centisecond
+    # value -- reading 4 bytes swallows the separate +0x16 field and runs 2.5x fast on factory saves
+    # / returns garbage on real records. See TRACK_RECORD_TIME_PRECISION.md.
+    raw = u16(b, o + 0x14)
+    cs = raw * 5 // 2
     return {
         "holder": ascii_name(b, o + 0x00),
-        "timeCs": cs,                  # centiseconds
+        "raw": raw,                    # 1/40-second units, as stored
+        "timeCs": cs,                  # centiseconds (raw x2.5)
+        "time": fmt_time(cs),          # M.SS.hh
         "timeSec": round(cs / 100.0, 2),
-        "tail": u32(b, o + 0x18),      # 0 in this factory save (reserved horse-id slot?)
+        "field16": u16(b, o + 0x16),   # separate 2B field (marker/flags) -- NOT part of the time
+        "tail": u32(b, o + 0x18),      # 4B (date-stamp on real records; 0 in factory save)
     }
 
 
@@ -165,9 +180,10 @@ def verify(b, e):
     chk("copy2 rec0 meta = 0x1680 (5760)", c2["meta"], 0x1680)
     t0 = decode_track_record(b, R1_TRACK)
     chk("track rec0 holder = Hitmaker", t0["holder"], "Hitmaker")
-    chk("track rec0 time = 3876cs (38.76s)", t0["timeCs"], 3876)
-    chk("track rec1 time = 3384cs", u32(b, R1_TRACK + TR_REC + 0x14), 3384)
-    chk("track rec25 time = 7956cs", u32(b, R1_TRACK + 25 * TR_REC + 0x14), 7956)
+    chk("track rec0 raw = 3876 (1/40s)", t0["raw"], 3876)
+    chk("track rec0 time = 9690cs (1.36.90)", t0["timeCs"], 9690)
+    chk("track rec1 raw = 3384 (1/40s)", u16(b, R1_TRACK + TR_REC + 0x14), 3384)
+    chk("track rec25 raw = 7956 (1/40s)", u16(b, R1_TRACK + 25 * TR_REC + 0x14), 7956)
     chk("track table ends at 0x15b8", R1_TRACK + TR_COUNT * TR_REC, 0x15b8)
     # region-2 corrected offset: the money key must reappear at 0x15f4 (NOT 0x1634)
     r2 = decode_money_record(b, R2_LB1)
@@ -222,8 +238,9 @@ def main():
                 "stride": TR_REC, "count": TR_COUNT,
                 "fields": {
                     "holder": "+0x00 20B name (NUL-padded)",
-                    "timeCs": "+0x14 LE32 centiseconds (3384 = 33.84s)",
-                    "tail":   "+0x18 LE32 (0 in factory save; reserved holder horse-id slot?)",
+                    "time":   "+0x14 LE16 in 1/40-second units; cs = raw*5//2 (x2.5). raw 3876 = 9690cs = 1.36.90. NOT LE32 centiseconds.",
+                    "field16":"+0x16 2B separate field (marker 0x0762/flags) -- NOT part of the time",
+                    "tail":   "+0x18 LE32 (date-stamp on real records; 0 in factory save)",
                 },
             },
             "regionOffsets": {

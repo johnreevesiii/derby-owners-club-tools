@@ -1,0 +1,47 @@
+{
+  "$schema": "./rom-spec.schema.json",
+  "specVersion": "1.0.0",
+  "id": "rev-c",
+  "identity": {
+    "tag": "Rev C",
+    "label": "Derby Owners Club World Edition",
+    "region": "World",
+    "mameSetname": "drbyocwc",
+    "programRom": "epr-22336c.ic22",
+    "romSize": 4194304,
+    "sha256": "2d2e76d4f7bb498d90211410c38291e832ce7175647a5cebed1003b8d641995e",
+    "signature": { "offset": "0x8000", "bytes": "dc99020c9cc8210ce0b8210c80b6210c" },
+    "naomiHeader": { "offset": "0x130", "buildDate": "2001-10-30", "gameCode": "BEF0" },
+    "derivedFrom": null
+  },
+  "encoding": { "names": "ascii", "strings": "ascii", "lineSeparator": "0x0a" },
+  "recordFormats": {
+    "roster": { "width": 32, "count": { "value": 244, "verified": true } },
+    "nameTable": { "stride": 18 },
+    "breeding": { "width": 60, "count": { "value": 167, "verified": true, "note": "EN split pool: 84 sires + 83 dams." } },
+    "food": { "width": 44, "count": { "value": 45, "verified": true } }
+  },
+  "tables": {
+    "roster":      { "offset": { "value": "0x108e03", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json; areas/horse-stats.md", "note": "244 CPU racing horses, 32-byte records." },
+    "names":       { "offset": { "value": "0x10ad50", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json", "note": "Stride 18, ASCII; name[n] aligns to roster[n]." },
+    "sire":        { "offset": { "value": "0x10bf1c", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "build_breeding.py; areas/breeding-system.md", "note": "60-byte mater records; 84 sires." },
+    "dam":         { "offset": { "value": "0x10d2cc", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "build_breeding.py; areas/breeding-system.md", "note": "60-byte mater records; 83 dams." },
+    "g1":          { "offset": { "value": "0xc6ca0", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "19 G1 races." },
+    "tracks":      { "offset": { "value": "0xc6940", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "36 courses." },
+    "foods":       { "offset": { "value": "0x166a7c", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_food.json", "note": "44-byte records, 45 foods; terminator 0x167238." },
+    "strings":     { "offset": { "value": "0x104548", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_strings.json", "note": "First of 26 blocks (Horse Race Comments); NUL/0x0A; full block map in doc_core_strings.json." },
+    "racePace":    { "offset": { "value": "0x10f204", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "areas/race-formula.md; _sh4/RACE_FORMULA_FINDINGS.md", "note": "Distance to pace multiplier, 12 keys." },
+    "personality": { "offset": { "value": "0x0e7d20", "frame": "file" }, "access": "computed", "verified": true, "source": "areas/personality-interaction.md", "note": "6x5 post-race bond multiplier float table; reader at runtime 0x0C027F80." }
+  },
+  "courses": {
+    "total": { "value": 36, "verified": true },
+    "g1": { "value": 19, "verified": true }
+  },
+  "cards": { "type": "full-stat", "marker": "SEGABEF0", "payloadBytes": 207, "note": "Full-stat US/World card. Marker code BEF0 matches NAOMI gameCode." },
+  "divergence": {
+    "rosterIdenticalTo": null,
+    "renamedRoster": false,
+    "foodMeta": { "beer": true, "banana": true },
+    "note": "World Edition baseline. Rev D CPU stat records are byte-identical to this version."
+  }
+}

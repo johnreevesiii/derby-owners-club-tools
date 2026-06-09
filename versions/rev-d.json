@@ -1,0 +1,47 @@
+{
+  "$schema": "./rom-spec.schema.json",
+  "specVersion": "1.0.0",
+  "id": "rev-d",
+  "identity": {
+    "tag": "Rev D",
+    "label": "Derby Owners Club World Edition EX",
+    "region": "World",
+    "mameSetname": "derbyocw",
+    "programRom": "epr-22336d.ic22",
+    "romSize": 4194304,
+    "sha256": "d4ba71dcb4d3dd38ad4419053c618992fb3fd969537431e91c420811d949410e",
+    "signature": { "offset": "0x8000", "bytes": "09004ad20ee347d02b4232203388018b" },
+    "naomiHeader": { "offset": "0x130", "buildDate": "2001-10-30", "gameCode": "BEF0" },
+    "derivedFrom": null
+  },
+  "encoding": { "names": "ascii", "strings": "ascii", "lineSeparator": "0x0a" },
+  "recordFormats": {
+    "roster": { "width": 32, "count": { "value": 244, "verified": true } },
+    "nameTable": { "stride": 18 },
+    "breeding": { "width": 60, "count": { "value": 177, "verified": true, "note": "EN split pool, 177 mater records." } },
+    "food": { "width": 44, "count": { "value": 45, "verified": true } }
+  },
+  "tables": {
+    "roster":      { "offset": { "value": "0x10a14b", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json; areas/horse-stats.md", "note": "CPU stat records byte-identical to Rev C; offsets shifted." },
+    "names":       { "offset": { "value": "0x10c098", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_roster.json", "note": "Names/breeders differ from Rev C." },
+    "sire":        { "offset": { "value": "0x10d264", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "build_breeding.py; areas/breeding-system.md", "note": "60-byte mater records." },
+    "dam":         { "offset": { "value": "0x10e614", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "build_breeding.py; areas/breeding-system.md", "note": "60-byte mater records." },
+    "g1":          { "offset": { "value": "0xc65c0", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "19 G1 races." },
+    "tracks":      { "offset": { "value": "0xc6260", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_tracks.json", "note": "36 courses." },
+    "foods":       { "offset": { "value": "0x16980c", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_food.json", "note": "44-byte records, 45 foods; terminator 0x169FC8." },
+    "strings":     { "offset": { "value": "0x104c75", "frame": "file" }, "access": "literal-pool", "verified": true, "source": "doc_core_strings.json", "note": "First of 6 blocks (Horse Race Comments); NUL/0x0A; full block map in doc_core_strings.json." },
+    "racePace":    { "offset": { "value": null, "frame": "file" }, "access": "literal-pool", "verified": false, "source": "areas/race-formula.md", "note": "Located in Rev C (0x10f204); not separately confirmed in Rev D. Candidate for live-ROM RE." },
+    "personality": { "offset": { "value": null, "frame": "file" }, "access": "computed", "verified": false, "source": "areas/personality-interaction.md", "note": "Located in Rev C (0x0e7d20); not separately confirmed in Rev D. Candidate for live-ROM RE." }
+  },
+  "courses": {
+    "total": { "value": 36, "verified": true },
+    "g1": { "value": 19, "verified": true }
+  },
+  "cards": { "type": "full-stat", "marker": "SEGABEF0", "payloadBytes": 207, "note": "Full-stat US/World card; shares BEF0 game code with Rev C." },
+  "divergence": {
+    "rosterIdenticalTo": "rev-c",
+    "renamedRoster": false,
+    "foodMeta": { "beer": true, "banana": true },
+    "note": "Rev D changes horse/breeder NAMES, not CPU stat records. Roster stat bytes are identical to Rev C; only the name and breeding tables differ. Breeding pool grew to 177 records. A cross-version stat patch from Rev C is safe; a name patch is not."
+  }
+}
