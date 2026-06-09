@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """doc-core: NVRAM (cabinet battery save) decoder for Derby Owners Club.
 
-Decodes the NAOMI cabinet BBSRAM (32 KB) + JVS EEPROM (128 B) into one canonical
-JSON: the full schema (offsets/record layout) PLUS a byte-exact sample dump from the
-demul07 `derbyocw.sram` save (the World Edition / Rev D cabinet save in this set).
+Decodes the NAOMI cabinet BBSRAM (32 KB) into one canonical JSON: the full schema
+(offsets/record layout) PLUS a byte-exact sample dump from the Flycast `derbyocw_flycast.nvmem`
+save (the World Edition / Rev D cabinet). A JVS EEPROM (128 B) and a master-board dump decode
+too when supplied, but a Flycast export is a single .nvmem, so those sections are null here.
+
+Usage:  python build_nvram.py [save.nvmem] [--master M] [--eeprom E] [-o OUTDIR]
+        No args decodes the bundled Flycast fixture; pass any 32 KB cabinet save to decode it.
 
 This is the cabinet hall-of-fame, NOT the player card (card = 207-byte `card` area).
 The SRAM holds two redundant SAVE REGIONS, each carrying:
@@ -16,21 +20,26 @@ EVERY offset below was re-verified against the real bytes (see verify() / PASS/F
 Corrections applied over _core/areas/nvram.md (per nvram_VERIFICATION.md, byte-confirmed):
   * region-2 money LB starts at 0x15f4 (NOT 0x1634); region-2 copy-2 at 0x1c34.
   * region stride/delta is +0x13c4 (5060), the same value stored as LE32 at 0x1fc.
-  * copy-2 metadata bytes "80 16 00" decode little-endian to 0x1680 (5760), not 0x168000.
+  * copy-2 metadata is a 3-byte LE value (a session/date candidate; 0x1680 in the old demul save, 0x380 in the Flycast sample), not big-endian.
   * the 0x100 bookkeeping block is a SECOND distinct header, NOT a verbatim mirror of 0x00.
   * track-record TIME at +0x14 is LE16 in 1/40-second units (cs = raw*5//2), NOT an LE32 centisecond
     value; the old LE32 read swallowed the separate +0x16 field and ran 2.5x fast. See
     TRACK_RECORD_TIME_PRECISION.md.
 """
-import json, os, struct, sys
+import argparse, json, os, struct, sys
 try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception: pass
 
-NV  = r"C:/Users/johnr/Downloads/demul07_280418/nvram"
-OUT = r"C:/DerbyOwnersClub/doc-core"
-SRAM   = f"{NV}/derbyocw.sram"      # satellite board sample (32 KB)
-SRAM_M = f"{NV}/derbyocwm.sram"     # master board (for the master/satellite diff)
-EEPROM = f"{NV}/derbyocw.eeprom"    # JVS EEPROM (128 B; byte-identical to master)
+# Flycast NAOMI BBSRAM export: one 32 KB .nvmem. The cabinet save is emulator-independent --
+# byte-identical record content to the old demul07 derbyocw.sram, differing only in per-board
+# bookkeeping/checksums. A Flycast export is a single file: no separate master dump or JVS EEPROM.
+# Paths are script-relative so this runs from the Drive SSOT on any machine.
+HERE = os.path.dirname(os.path.abspath(__file__))
+FIX  = os.path.join(HERE, "leaderboard", "tests", "fixtures")
+OUT  = HERE                                           # doc_core_nvram.json is written beside this script
+SRAM   = os.path.join(FIX, "derbyocw_flycast.nvmem")  # Rev D World Edition cabinet save (satellite)
+SRAM_M = None                                         # no separate master dump in a Flycast export
+EEPROM = None                                         # no separate JVS EEPROM in a Flycast export
 
 # ---- canonical geometry (byte-verified) -----------------------------------
 REGION_STRIDE = 0x13c4              # region2 = region1 + this (= LE32 @0x1fc)
@@ -161,10 +170,10 @@ def verify(b, e):
     c = []
     def chk(name, got, want): c.append((name, got == want, got, want))
     chk("sram size 32768", len(b), 32768)
-    chk("eeprom size 128", len(e), 128)
-    chk("hdr playCounterA = 3017", u32(b, 0x00), 3017)
-    chk("hdr runtimeCounter = 28138", u32(b, 0x08), 28138)
-    chk("region1 checksum @0x1f8 = 0x3536", u16(b, 0x1f8), 0x3536)
+    if e is not None: chk("eeprom size 128", len(e), 128)
+    chk("hdr playCounterA = 1566", u32(b, 0x00), 1566)
+    chk("hdr runtimeCounter = 13237", u32(b, 0x08), 13237)
+    chk("region1 checksum @0x1f8 = 0x353a", u16(b, 0x1f8), 0x353a)
     chk("region length word @0x1fc = 0x13c4", u32(b, 0x1fc), REGION_STRIDE)
     chk("marker name = Big Shuttle", ascii_name(b, R1_MARKER + 4), "Big Shuttle")
     r0 = decode_money_record(b, R1_LB1)
@@ -177,7 +186,7 @@ def verify(b, e):
     mono = all(u32(b, R1_LB1 + i * LB_REC + 2) >= u32(b, R1_LB1 + (i + 1) * LB_REC + 2) for i in range(49))
     chk("money strictly descending", mono, True)
     c2 = decode_money_record(b, R1_LB2, copy2=True)
-    chk("copy2 rec0 meta = 0x1680 (5760)", c2["meta"], 0x1680)
+    chk("copy2 rec0 meta = 0x380 (896)", c2["meta"], 0x380)
     t0 = decode_track_record(b, R1_TRACK)
     chk("track rec0 holder = Hitmaker", t0["holder"], "Hitmaker")
     chk("track rec0 raw = 3876 (1/40s)", t0["raw"], 3876)
@@ -192,15 +201,25 @@ def verify(b, e):
     chk("region2 delta = 0x13c4", R2_LB1 - R1_LB1, REGION_STRIDE)
     chk("0x1634 is NOT region2 LB start", decode_money_record(b, 0x1634)["money"] != 417935500, True)
     chk("0x100 header NOT verbatim mirror of 0x00", b[0:12] == b[0x100:0x10c], False)
-    chk("eeprom game tag", ascii_name(e, 0x30, 21), "DERBY OWNERS CLUB AM3")
+    if e is not None: chk("eeprom game tag", ascii_name(e, 0x30, 21), "DERBY OWNERS CLUB AM3")
     return c, all(ok for _, ok, _, _ in c)
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
-    b  = open(SRAM, "rb").read()
-    bm = open(SRAM_M, "rb").read()
-    e  = open(EEPROM, "rb").read()
+    ap = argparse.ArgumentParser(description="Decode a Derby Owners Club NAOMI cabinet save (.nvmem/.sram) to canonical doc_core_nvram.json.")
+    ap.add_argument("nvmem", nargs="?", default=SRAM,
+                    help="32 KB cabinet BBSRAM save -- a Flycast .nvmem or a Demul .sram (default: the bundled Flycast fixture).")
+    ap.add_argument("--master", default=SRAM_M, help="optional master-board save; enables the master/satellite diff section.")
+    ap.add_argument("--eeprom", default=EEPROM, help="optional 128 B JVS EEPROM dump; enables the eeprom section.")
+    ap.add_argument("-o", "--out", default=OUT, help="output directory for doc_core_nvram.json (default: this script's folder).")
+    args = ap.parse_args()
+    if not os.path.exists(args.nvmem):
+        sys.exit(f"save not found: {args.nvmem}\n"
+                 f"Pass a 32 KB cabinet .nvmem/.sram path, e.g.:  python build_nvram.py path/to/save.nvmem")
+    os.makedirs(args.out, exist_ok=True)
+    b  = open(args.nvmem, "rb").read()
+    bm = open(args.master, "rb").read() if args.master else None
+    e  = open(args.eeprom, "rb").read() if args.eeprom else None
 
     checks, ok = verify(b, e)
     print("=== doc-core NVRAM decode — self-verify ===")
@@ -258,18 +277,18 @@ def main():
             "openFields": ["flag0", "flag1", "money copy-2 meta (0x1680)", "track tail", "header +0x08 runtime/section counter"],
         },
         "sample": {
-            "source": "demul07_280418/nvram/derbyocw.sram (+ derbyocwm.sram, derbyocw.eeprom)",
+            "source": "leaderboard/tests/fixtures/derbyocw_flycast.nvmem (Flycast NAOMI BBSRAM export)",
             "board": "satellite (cw)",
             "sramBytes": len(b), "sramUsedThrough": hex(lastnz),
-            "eeprom": decode_eeprom(e),
+            "eeprom": decode_eeprom(e) if e is not None else None,
             "bookkeeping": decode_bookkeeping(b),
             "region1": decode_region(b, R1_HEADER, R1_LB1, R1_LB2, R1_TRACK, R1_TRAILER),
             "region2": decode_region(b, R2_HEADER, R2_LB1, R2_LB2, R2_TRACK, R2_TRAILER),
-            "masterSatelliteDiff": master_satellite_diff(b, bm),
+            "masterSatelliteDiff": master_satellite_diff(b, bm) if bm is not None else None,
         },
         "_verify": {"pass": ok, "checks": [{"name": n, "ok": g, "got": str(gt), "want": str(w)} for n, g, gt, w in checks]},
     }
-    path = f"{OUT}/doc_core_nvram.json"
+    path = f"{args.out}/doc_core_nvram.json"
     json.dump(data, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(f"\nwrote {path} ({os.path.getsize(path):,} bytes)")
     if not ok:
